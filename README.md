@@ -23,6 +23,16 @@ This workflow is for people who already live in Alfred and want a fast way to:
 * listen to long videos, talks, interviews, or music without opening a browser tab
 * switch between a fresh link, the clipboard, and recent history with minimal friction
 
+## Screenshots
+
+Search results with clipboard playback and recent history:
+
+![Alfred search results showing clipboard playback and recent items](docs/screenshots/alfred-search-results.png)
+
+Active playback controls inside Alfred:
+
+![Alfred showing pause and stop controls for the current audio session](docs/screenshots/alfred-playback-controls.png)
+
 ## Release Notes
 
 `v0.9` is the first public beta-style release.
@@ -82,6 +92,8 @@ The workflow currently accepts common YouTube link formats including:
 3. Import it into Alfred.
 
 If Alfred does not use the same Python path as this machine, update the script runner path inside `workflow/info.plist` before importing or after installation.
+
+For the easiest install path after publishing, download the latest `.alfredworkflow` file from the GitHub Releases page and open it directly.
 
 ## Usage
 

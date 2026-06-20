@@ -25,3 +25,5 @@ Testing status:
 Release notes:
 
 * Feedback is welcome, especially around setup differences, compatibility issues, and Alfred behavior edge cases
+* Release artifact: `YT Audio Player.alfredworkflow`
+* SHA-256: `404867ffa03f85d159963fd35c410716f63e056dee7110ba05df00573978edb0`
