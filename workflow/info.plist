@@ -1,0 +1,134 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>bundleid</key>
+  <string>com.laurent.alfred-youtube-audio-player</string>
+  <key>connections</key>
+  <dict>
+    <key>3A3A5A61-7A2D-4A9B-8A6A-PLAYACTION</key>
+    <array/>
+    <key>7F6A5C41-2A4A-4017-9B9D-SCRIPTFILTER</key>
+    <array>
+      <dict>
+        <key>destinationuid</key>
+        <string>3A3A5A61-7A2D-4A9B-8A6A-PLAYACTION</string>
+        <key>modifiers</key>
+        <integer>0</integer>
+        <key>modifiersubtext</key>
+        <string></string>
+        <key>vitoclose</key>
+        <false/>
+      </dict>
+    </array>
+  </dict>
+  <key>createdby</key>
+  <string>OpenAI Codex</string>
+  <key>description</key>
+  <string>Play YouTube URLs as audio through yt-dlp and ffplay, with clipboard fallback and five-item history.</string>
+  <key>disabled</key>
+  <false/>
+  <key>name</key>
+  <string>YT Audio Player</string>
+  <key>objects</key>
+  <array>
+    <dict>
+      <key>config</key>
+      <dict>
+        <key>alfredfiltersresults</key>
+        <false/>
+        <key>alfredfiltersresultsmatchmode</key>
+        <integer>0</integer>
+        <key>argumenttreatemptyqueryasnil</key>
+        <true/>
+        <key>argumenttrimmode</key>
+        <integer>0</integer>
+        <key>argumenttype</key>
+        <integer>1</integer>
+        <key>escaping</key>
+        <integer>102</integer>
+        <key>keyword</key>
+        <string>yt</string>
+        <key>queuedelaycustom</key>
+        <integer>1</integer>
+        <key>queuedelayimmediatelyinitially</key>
+        <true/>
+        <key>queuedelaymode</key>
+        <integer>0</integer>
+        <key>queuemode</key>
+        <integer>1</integer>
+        <key>runningsubtext</key>
+        <string>Checking URL, clipboard, and recent history…</string>
+        <key>script</key>
+        <string>export PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"
+"/Library/Frameworks/Python.framework/Versions/3.11/bin/python3" yt_audio_workflow.py filter "${1:-}"</string>
+        <key>scriptargtype</key>
+        <integer>1</integer>
+        <key>scriptfile</key>
+        <string></string>
+        <key>subtext</key>
+        <string>Play a YouTube URL or choose a recent item.</string>
+        <key>title</key>
+        <string>YT Audio Player</string>
+        <key>type</key>
+        <integer>0</integer>
+        <key>withspace</key>
+        <false/>
+      </dict>
+      <key>type</key>
+      <string>alfred.workflow.input.scriptfilter</string>
+      <key>uid</key>
+      <string>7F6A5C41-2A4A-4017-9B9D-SCRIPTFILTER</string>
+      <key>version</key>
+      <integer>3</integer>
+    </dict>
+    <dict>
+      <key>config</key>
+      <dict>
+        <key>concurrently</key>
+        <false/>
+        <key>escaping</key>
+        <integer>102</integer>
+        <key>script</key>
+        <string>export PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"
+"/Library/Frameworks/Python.framework/Versions/3.11/bin/python3" yt_audio_workflow.py dispatch "${1:-}" &gt;&gt; "${alfred_workflow_data:-/tmp}/yt-audio-player.log" 2&gt;&amp;1</string>
+        <key>scriptargtype</key>
+        <integer>1</integer>
+        <key>scriptfile</key>
+        <string></string>
+        <key>type</key>
+        <integer>0</integer>
+      </dict>
+      <key>type</key>
+      <string>alfred.workflow.action.script</string>
+      <key>uid</key>
+      <string>3A3A5A61-7A2D-4A9B-8A6A-PLAYACTION</string>
+      <key>version</key>
+      <integer>2</integer>
+    </dict>
+  </array>
+  <key>readme</key>
+  <string>Type yt followed by a YouTube URL, or type yt alone to use the clipboard URL.</string>
+  <key>uidata</key>
+  <dict>
+    <key>3A3A5A61-7A2D-4A9B-8A6A-PLAYACTION</key>
+    <dict>
+      <key>xpos</key>
+      <integer>420</integer>
+      <key>ypos</key>
+      <integer>160</integer>
+    </dict>
+    <key>7F6A5C41-2A4A-4017-9B9D-SCRIPTFILTER</key>
+    <dict>
+      <key>xpos</key>
+      <integer>180</integer>
+      <key>ypos</key>
+      <integer>160</integer>
+    </dict>
+  </dict>
+  <key>version</key>
+  <string>0.9</string>
+  <key>webaddress</key>
+  <string></string>
+</dict>
+</plist>
