@@ -1,6 +1,6 @@
 # Alfred YT Audio Player
 
-An Alfred workflow that plays a YouTube URL as audio through `yt-dlp` and `ffplay`.
+Play YouTube links as audio directly from Alfred on macOS using `yt-dlp` and `ffplay`.
 
 Current release: `v0.9`
 
@@ -8,12 +8,20 @@ This is an early public release. It works well in local testing, but it has not 
 
 ## What It Does
 
-* Type `yt <youtube-url>` to play that video as audio.
-* Type `yt` with no URL to use the YouTube URL currently in the clipboard.
-* If something is already playing, the workflow stops it and replaces it with the new selection.
-* When audio is active, Alfred shows `Pause current audio`, `Resume current audio`, and `Stop current audio`.
-* Alfred shows the last five videos you played so you can switch back quickly.
-* The workflow sends notifications when it is resolving a stream, starts playback, pauses, resumes, stops, or fails.
+* Type `yt <youtube-url>` to play a YouTube video as audio from Alfred.
+* Type `yt` with no URL to play the YouTube link currently in the clipboard.
+* Stop the current audio automatically when a new item is played.
+* Pause, resume, or stop playback from Alfred while audio is active.
+* Reopen one of the last five videos you played from recent history.
+* See Alfred notifications when playback starts, pauses, resumes, stops, or fails.
+
+## Why It Exists
+
+This workflow is for people who already live in Alfred and want a fast way to:
+
+* turn a YouTube URL into background audio
+* listen to long videos, talks, interviews, or music without opening a browser tab
+* switch between a fresh link, the clipboard, and recent history with minimal friction
 
 ## Release Notes
 
@@ -37,9 +45,18 @@ Known caveat:
 * macOS
 * `yt-dlp`
 * `ffplay`
-* Python 3.11 at `/Library/Frameworks/Python.framework/Versions/3.11/bin/python3`
+* Python 3.11
 
 This Mac already has `yt-dlp`, `ffplay`, and that Python path installed. If your environment differs, update `workflow/info.plist` to point at the correct Python binary.
+
+## Supported URL Formats
+
+The workflow currently accepts common YouTube link formats including:
+
+* `https://www.youtube.com/watch?v=...`
+* `https://youtu.be/...`
+* `https://www.youtube.com/shorts/...`
+* `https://www.youtube.com/live/...`
 
 ## Repo Layout
 
@@ -63,6 +80,8 @@ This Mac already has `yt-dlp`, `ffplay`, and that Python path installed. If your
 `dist/YT Audio Player.alfredworkflow`
 
 3. Import it into Alfred.
+
+If Alfred does not use the same Python path as this machine, update the script runner path inside `workflow/info.plist` before importing or after installation.
 
 ## Usage
 
@@ -91,6 +110,19 @@ The workflow stores runtime state in Alfred's workflow data directory:
 * pause and resume are process-level controls built on `ffplay`, so very occasional stream reconnection quirks may still need a fresh play action
 * error handling is surfaced through Alfred result rows and script failures rather than a custom UI
 
+## Ideal GitHub Topics
+
+If you publish this repo on GitHub, these topics are a good fit:
+
+* `alfred-workflow`
+* `alfred`
+* `youtube`
+* `youtube-audio`
+* `yt-dlp`
+* `ffplay`
+* `macos`
+* `productivity`
+
 ## Feedback
 
 If you try this workflow and hit a bug, confusing interaction, or compatibility issue, feedback is welcome. The most useful reports include:
@@ -107,10 +139,13 @@ Search terms for discoverability:
 * Alfred workflow
 * Alfred YouTube player
 * Alfred YouTube audio
+* Alfred audio player
 * Alfred clipboard workflow
 * yt-dlp Alfred
 * ffplay Alfred
 * macOS YouTube audio player
 * YouTube audio workflow
+* Play YouTube audio from Alfred
+* Listen to YouTube in Alfred
 * Alfred media control
 * Alfred recent history workflow
