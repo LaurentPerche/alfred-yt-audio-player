@@ -1,6 +1,6 @@
 # Alfred YT Audio Player
 
-Play YouTube links as audio directly from Alfred on macOS using `yt-dlp` and `ffplay`.
+Play YouTube links as background audio directly from Alfred on macOS using `yt-dlp` and `ffplay`, without keeping YouTube open in Chrome or any other browser.
 
 Current release: `v0.9`
 
@@ -10,6 +10,7 @@ This is an early public release. It works well in local testing, but it has not 
 
 * Type `yt <youtube-url>` to play a YouTube video as audio from Alfred.
 * Type `yt` with no URL to play the YouTube link currently in the clipboard.
+* Play audio in the background without leaving YouTube open in a web browser.
 * Stop the current audio automatically when a new item is played.
 * Pause, resume, or stop playback from Alfred while audio is active.
 * Reopen one of the last five videos you played from recent history.
@@ -20,7 +21,7 @@ This is an early public release. It works well in local testing, but it has not 
 This workflow is for people who already live in Alfred and want a fast way to:
 
 * turn a YouTube URL into background audio
-* listen to long videos, talks, interviews, or music without opening a browser tab
+* listen to long videos, talks, interviews, or music without keeping a browser tab open
 * switch between a fresh link, the clipboard, and recent history with minimal friction
 
 ## Screenshots
@@ -152,6 +153,7 @@ Search terms for discoverability:
 * Alfred YouTube player
 * Alfred YouTube audio
 * Alfred audio player
+* Alfred background audio
 * Alfred clipboard workflow
 * yt-dlp Alfred
 * ffplay Alfred
@@ -159,5 +161,7 @@ Search terms for discoverability:
 * YouTube audio workflow
 * Play YouTube audio from Alfred
 * Listen to YouTube in Alfred
+* Play YouTube without browser
+* Background YouTube audio on macOS
 * Alfred media control
 * Alfred recent history workflow
