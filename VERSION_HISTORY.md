@@ -1,6 +1,29 @@
 # Version History
 
-Total estimated effort so far: ~6 hours
+Total estimated effort so far: ~7 hours
+
+## v0.9.1
+
+Release status: public patch release
+
+Approximate implementation and release effort: ~1 hour
+
+Highlights:
+
+* Replaced the hardcoded Python 3.11 framework path in the Alfred workflow with `python3` from `PATH`
+* Improved compatibility after macOS, Homebrew, Python, and Intel-versus-Apple-Silicon environment changes
+* Preserved the existing playback, clipboard fallback, controls, and recent-history behavior
+
+Testing status:
+
+* Unit-tested locally with `python3 -m unittest discover -s tests -p 'test_*.py'`
+* Manually tested locally in Alfred after the fix and confirmed working
+
+Release notes:
+
+* This patch release ships seven days after `v0.9`
+* Release artifact: `YT Audio Player.alfredworkflow`
+* SHA-256: `d5fa408f93cc20cdd566ff295e12f61105fc4841f289b28b3453d8cad64593f4`
 
 ## v0.9
 

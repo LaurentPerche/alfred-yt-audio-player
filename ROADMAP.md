@@ -2,6 +2,12 @@
 
 ## Current
 
+### v0.9.1
+
+* Compatibility fix for Python path changes after macOS and tooling updates
+* Use `python3` from `PATH` instead of a hardcoded `/Library/Frameworks/.../python3` path
+* Keep the workflow working across Intel and Apple Silicon setups with standard Homebrew or system Python installs
+
 ### v0.9
 
 * Public beta release of the Alfred YouTube audio player

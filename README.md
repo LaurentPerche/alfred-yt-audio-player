@@ -2,7 +2,7 @@
 
 Play YouTube links as background audio directly from Alfred on macOS using `yt-dlp` and `ffplay`, without keeping YouTube open in Chrome or any other browser.
 
-Current release: `v0.9`
+Current release: `v0.9.1`
 
 This is an early public release. It works well in local testing, but it has not been fully tested across different macOS and Alfred setups yet. Feedback, bug reports, and edge cases are very welcome.
 
@@ -36,19 +36,17 @@ Active playback controls inside Alfred:
 
 ## Release Notes
 
-`v0.9` is the first public beta-style release.
+`v0.9.1` improves compatibility after Python and architecture-related macOS environment changes.
 
 Highlights:
 
-* play a typed YouTube URL with the `yt` keyword
-* play the current clipboard YouTube URL when you type `yt` alone
-* pause, resume, and stop the current audio session
-* switch quickly between the last five played videos
-* lightweight Alfred-native controls without a separate app window
+* use `python3` from `PATH` instead of a hardcoded Python framework path
+* work more reliably across Intel and Apple Silicon Homebrew and Python setups
+* keep the same Alfred-first playback, clipboard, history, and background-audio workflow
 
 Known caveat:
 
-* this release is not fully tested on every macOS, Alfred, Python, or `ffplay` setup yet
+* this release is still not fully tested on every macOS, Alfred, Python, or `ffplay` setup yet
 
 ## Requirements
 
@@ -56,9 +54,9 @@ Known caveat:
 * macOS
 * `yt-dlp`
 * `ffplay`
-* Python 3.11
+* `python3`
 
-This Mac already has `yt-dlp`, `ffplay`, and that Python path installed. If your environment differs, update `workflow/info.plist` to point at the correct Python binary.
+The workflow now runs `python3` from `PATH`, so standard Homebrew or system Python setups should work on both Intel and Apple Silicon Macs as long as `python3` is available in Alfred's shell environment.
 
 ## Supported URL Formats
 
@@ -91,8 +89,6 @@ The workflow currently accepts common YouTube link formats including:
 `dist/YT Audio Player.alfredworkflow`
 
 3. Import it into Alfred.
-
-If Alfred does not use the same Python path as this machine, update the script runner path inside `workflow/info.plist` before importing or after installation.
 
 For the easiest install path after publishing, download the latest `.alfredworkflow` file from the GitHub Releases page and open it directly.
 
