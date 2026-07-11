@@ -17,6 +17,7 @@ from urllib.parse import parse_qs, urlparse
 
 APP_NAME = "Alfred YT Audio Player"
 HISTORY_LIMIT = 5
+DISPLAY_TITLE_LIMIT = 56
 YTDLP_BIN = which("yt-dlp") or "/usr/local/bin/yt-dlp"
 FFPLAY_BIN = which("ffplay") or "/usr/local/bin/ffplay"
 PYTHON_BIN = sys.executable
@@ -56,6 +57,25 @@ def load_json(path: Path, default: Any) -> Any:
 
 def save_json(path: Path, payload: Any) -> None:
     path.write_text(json.dumps(payload, indent=2))
+
+
+def simplified_history_title(title: str) -> str:
+    cleaned = " ".join(title.split()).strip()
+    if not cleaned:
+        return ""
+
+    cleaned = re.sub(r"\s+-\s+YouTube$", "", cleaned, flags=re.IGNORECASE)
+    for separator in (" | ", " - "):
+        if separator not in cleaned:
+            continue
+        head, tail = cleaned.rsplit(separator, 1)
+        if len(head.strip()) >= 12 and len(tail.strip()) <= 30:
+            cleaned = head.strip()
+            break
+
+    if len(cleaned) <= DISPLAY_TITLE_LIMIT:
+        return cleaned
+    return f"{cleaned[: DISPLAY_TITLE_LIMIT - 3].rstrip()}..."
 
 
 def youtube_video_id(raw: str) -> str | None:
@@ -284,12 +304,15 @@ def resume_playback() -> dict[str, Any]:
 
 def update_history(url: str, title: str) -> None:
     now = int(time.time())
+    existing = next((entry for entry in load_history() if entry.get("url") == url), {})
     history = [entry for entry in load_history() if entry.get("url") != url]
     history.insert(
         0,
         {
             "url": url,
             "title": title,
+            "display_title": simplified_history_title(title) or title,
+            "play_count": int(existing.get("play_count", 0)) + 1,
             "played_at": now,
         },
     )
@@ -318,17 +341,28 @@ def dependency_errors() -> list[str]:
     return missing
 
 
+def play_count_label(value: Any) -> str:
+    if not isinstance(value, int) or value < 1:
+        return ""
+    if value == 1:
+        return "1 play"
+    return f"{value} plays"
+
+
 def recent_items() -> list[dict[str, Any]]:
     items = []
     state = current_state()
     active_url = state.get("url")
     active_paused = bool(state.get("paused"))
     for entry in load_history()[:HISTORY_LIMIT]:
-        title = entry.get("title") or entry["url"]
+        title = entry.get("display_title") or entry.get("title") or entry["url"]
         subtitle = played_label(entry.get("played_at"))
+        count_label = play_count_label(entry.get("play_count"))
+        if count_label:
+            subtitle = f"{subtitle} • {count_label}"
         if entry.get("url") == active_url:
             status = "Currently paused" if active_paused else "Currently playing"
-            subtitle = status
+            subtitle = status if not count_label else f"{status} • {count_label}"
         items.append(
             alfred_item(
                 title=f"Recent: {title}",

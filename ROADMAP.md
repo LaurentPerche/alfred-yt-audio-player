@@ -2,6 +2,12 @@
 
 ## Current
 
+### v0.10.0
+
+* Simplify noisy recent-video titles automatically in Alfred history results
+* Show a per-video play count directly in the Alfred recent-items subtitle
+* Keep the same five-item recent history and URL-based deduplication model
+
 ### v0.9.1
 
 * Compatibility fix for Python path changes after macOS and tooling updates

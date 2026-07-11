@@ -127,7 +127,7 @@ python3 yt_audio_workflow.py dispatch "${1:-}" &gt;&gt; "${alfred_workflow_data:
     </dict>
   </dict>
   <key>version</key>
-  <string>0.9.1</string>
+  <string>0.10.0</string>
   <key>webaddress</key>
   <string></string>
 </dict>

@@ -11,7 +11,7 @@ mkdir -p "$dist_dir"
 rm -f "$artifact"
 (
   cd "$workflow_dir"
-  zip -qr "$artifact" .
+  zip -qr "$artifact" . -x "__pycache__/*" "*.pyc" ".DS_Store"
 )
 
 echo "Created $artifact"

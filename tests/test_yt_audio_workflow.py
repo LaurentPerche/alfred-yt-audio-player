@@ -70,10 +70,18 @@ class FilterTests(unittest.TestCase):
     def test_filter_uses_clipboard_and_history(self) -> None:
         now = datetime.now()
         history = [
-            {"url": "https://www.youtube.com/watch?v=first", "title": "First", "played_at": int(now.timestamp())},
+            {
+                "url": "https://www.youtube.com/watch?v=first",
+                "title": "First",
+                "display_title": "First",
+                "play_count": 3,
+                "played_at": int(now.timestamp()),
+            },
             {
                 "url": "https://www.youtube.com/watch?v=second",
                 "title": "Second",
+                "display_title": "Second",
+                "play_count": 1,
                 "played_at": int((now - timedelta(days=1)).timestamp()),
             },
         ]
@@ -84,8 +92,8 @@ class FilterTests(unittest.TestCase):
         self.assertEqual(payload["items"][0]["title"], "Play clipboard URL")
         self.assertEqual(payload["items"][1]["title"], "Recent: First")
         self.assertEqual(payload["items"][2]["title"], "Recent: Second")
-        self.assertEqual(payload["items"][1]["subtitle"], "Played today")
-        self.assertEqual(payload["items"][2]["subtitle"], "Played yesterday")
+        self.assertEqual(payload["items"][1]["subtitle"], "Played today • 3 plays")
+        self.assertEqual(payload["items"][2]["subtitle"], "Played yesterday • 1 play")
         self.assertNotIn("youtube.com", payload["items"][1]["subtitle"])
 
     def test_filter_shows_pause_and_stop_controls_when_active(self) -> None:
@@ -122,7 +130,13 @@ class FilterTests(unittest.TestCase):
 
     def test_active_recent_item_only_shows_status_not_url(self) -> None:
         history = [
-            {"url": "https://www.youtube.com/watch?v=active", "title": "Active Video", "played_at": 1},
+            {
+                "url": "https://www.youtube.com/watch?v=active",
+                "title": "Active Video",
+                "display_title": "Active Video",
+                "play_count": 4,
+                "played_at": 1,
+            },
         ]
         state = {
             "pid": 1234,
@@ -138,7 +152,23 @@ class FilterTests(unittest.TestCase):
                 with patch.object(yt_audio_workflow, "clipboard_text", return_value=""):
                     payload = yt_audio_workflow.filter_items("")
         recent_item = next(item for item in payload["items"] if item["title"] == "Recent: Active Video")
-        self.assertEqual(recent_item["subtitle"], "Currently playing")
+        self.assertEqual(recent_item["subtitle"], "Currently playing • 4 plays")
+
+    def test_recent_items_fall_back_to_original_title_for_older_history(self) -> None:
+        now = datetime.now()
+        history = [
+            {
+                "url": "https://www.youtube.com/watch?v=legacy",
+                "title": "Legacy Title",
+                "played_at": int(now.timestamp()),
+            },
+        ]
+        with self.patch_data_dir(), self.patch_paths():
+            (self.data_dir / "history.json").write_text(json.dumps(history))
+            with patch.object(yt_audio_workflow, "clipboard_text", return_value=""):
+                payload = yt_audio_workflow.filter_items("")
+        recent_item = next(item for item in payload["items"] if item["title"] == "Recent: Legacy Title")
+        self.assertEqual(recent_item["subtitle"], "Played today")
 
     def test_filter_shows_invalid_clipboard_message(self) -> None:
         with self.patch_data_dir(), self.patch_paths():
@@ -163,7 +193,13 @@ class HistoryTests(unittest.TestCase):
 
     def test_update_history_deduplicates_and_limits(self) -> None:
         seed = [
-            {"url": f"https://www.youtube.com/watch?v={idx}", "title": f"Video {idx}", "played_at": idx}
+            {
+                "url": f"https://www.youtube.com/watch?v={idx}",
+                "title": f"Video {idx}",
+                "display_title": f"Video {idx}",
+                "play_count": 1,
+                "played_at": idx,
+            }
             for idx in range(5)
         ]
         with self.patch_paths():
@@ -176,6 +212,21 @@ class HistoryTests(unittest.TestCase):
         self.assertEqual(len(history), 5)
         self.assertEqual(history[0]["url"], "https://www.youtube.com/watch?v=new")
         self.assertEqual(history[1]["url"], "https://www.youtube.com/watch?v=2")
+        self.assertEqual(history[0]["play_count"], 1)
+        self.assertEqual(history[1]["play_count"], 2)
+        self.assertEqual(history[0]["display_title"], "New Video")
+
+    def test_update_history_generates_simplified_display_title(self) -> None:
+        with self.patch_paths():
+            yt_audio_workflow.update_history(
+                "https://www.youtube.com/watch?v=raycast",
+                "Introducing Raycast Dictation | Raycast",
+            )
+            history = json.loads((self.data_dir / "history.json").read_text())
+
+        self.assertEqual(history[0]["title"], "Introducing Raycast Dictation | Raycast")
+        self.assertEqual(history[0]["display_title"], "Introducing Raycast Dictation")
+        self.assertEqual(history[0]["play_count"], 1)
 
 
 class DispatchTests(unittest.TestCase):

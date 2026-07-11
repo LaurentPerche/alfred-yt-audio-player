@@ -2,7 +2,7 @@
 
 Play YouTube links as background audio directly from Alfred on macOS using `yt-dlp` and `ffplay`, without keeping YouTube open in Chrome or any other browser.
 
-Current release: `v0.9.1`
+Current release: `v0.10.0`
 
 This is an early public release. It works well in local testing, but it has not been fully tested across different macOS and Alfred setups yet. Feedback, bug reports, and edge cases are very welcome.
 
@@ -13,7 +13,7 @@ This is an early public release. It works well in local testing, but it has not 
 * Play audio in the background without leaving YouTube open in a web browser.
 * Stop the current audio automatically when a new item is played.
 * Pause, resume, or stop playback from Alfred while audio is active.
-* Reopen one of the last five videos you played from recent history.
+* Reopen one of the last five videos you played from recent history, with shorter labels and per-video play counts.
 * See Alfred notifications when playback starts, pauses, resumes, stops, or fails.
 
 ## Why It Exists
@@ -36,12 +36,12 @@ Active playback controls inside Alfred:
 
 ## Release Notes
 
-`v0.9.1` improves compatibility after Python and architecture-related macOS environment changes.
+`v0.10.0` improves recent-history usability inside Alfred.
 
 Highlights:
 
-* use `python3` from `PATH` instead of a hardcoded Python framework path
-* work more reliably across Intel and Apple Silicon Homebrew and Python setups
+* shorten noisy YouTube titles automatically in the recent-items list
+* show how many times each recent video has been played
 * keep the same Alfred-first playback, clipboard, history, and background-audio workflow
 
 Known caveat:
@@ -103,6 +103,8 @@ When you type only `yt`, Alfred shows:
 * playback controls first when audio is already active
 * `Play clipboard URL` if the clipboard contains a valid YouTube URL
 * the five most recent videos underneath
+* simplified recent-item names when the original YouTube title is noisy
+* how many times each recent video has been played
 
 ## State Storage
 
@@ -111,7 +113,7 @@ The workflow stores runtime state in Alfred's workflow data directory:
 * `state.json`
   Tracks the active playback PID, URL, title, and start time
 * `history.json`
-  Tracks the five most recent unique plays
+  Tracks the five most recent unique plays, simplified recent-item labels, and per-video play counts
 
 ## Known Limits
 

@@ -1,6 +1,29 @@
 # Version History
 
-Total estimated effort so far: ~7 hours
+Total estimated effort so far: ~8 hours
+
+## v0.10.0
+
+Release status: public feature release
+
+Approximate implementation and release effort: ~1 hour
+
+Highlights:
+
+* Added simplified display titles for recent Alfred history items so repeated videos are easier to recognize
+* Added per-video play counts directly in the Alfred recent-items subtitle
+* Preserved the existing five-item recent-history model and URL-based deduplication behavior
+
+Testing status:
+
+* Unit-tested locally with `python3 -m unittest discover -s tests -p 'test_*.py'`
+* Manually tested locally in Alfred after syncing the workflow directly and confirmed working
+
+Release notes:
+
+* This feature release ships fourteen days after `v0.9` and seven days after `v0.9.1`
+* Release artifact: `YT Audio Player.alfredworkflow`
+* SHA-256: `dfc4b79385b946f4b68c8760b8e254c04376afca2dfc4239422acad49cd5d489`
 
 ## v0.9.1
 
