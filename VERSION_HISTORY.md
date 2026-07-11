@@ -1,6 +1,30 @@
 # Version History
 
-Total estimated effort so far: ~8 hours
+Total estimated effort so far: ~9 hours
+
+## v0.11.0
+
+Release status: public feature release
+
+Approximate implementation and release effort: ~1 hour
+
+Highlights:
+
+* Added up to three quick picks at the top of the Alfred results based on most-played history
+* Replaced `Quick Pick:` and `Recent:` text prefixes with icon-only categorization for a cleaner list
+* Added a modern custom icon set for URL playback, quick picks, recents, pause, resume, stop, and warning states
+* Preserved the existing clipboard-first playback flow, five-item history model, and play-count tracking
+
+Testing status:
+
+* Unit-tested locally with `python3 -m unittest discover -s tests -p 'test_*.py'`
+* Manually tested locally in Alfred after syncing the workflow directly and confirmed working
+
+Release notes:
+
+* This feature release ships later the same day as `v0.10.0`
+* Release artifact: `YT Audio Player.alfredworkflow`
+* SHA-256: `93f6263c2d741936febb8d8e941f71ada8b4d8f1a2e76942bbf9e796bf6485dc`
 
 ## v0.10.0
 

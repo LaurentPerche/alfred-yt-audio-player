@@ -90,11 +90,15 @@ class FilterTests(unittest.TestCase):
             with patch.object(yt_audio_workflow, "clipboard_text", return_value="https://youtu.be/abc123"):
                 payload = yt_audio_workflow.filter_items("")
         self.assertEqual(payload["items"][0]["title"], "Play clipboard URL")
-        self.assertEqual(payload["items"][1]["title"], "Recent: First")
-        self.assertEqual(payload["items"][2]["title"], "Recent: Second")
-        self.assertEqual(payload["items"][1]["subtitle"], "Played today • 3 plays")
+        self.assertEqual(payload["items"][1]["title"], "First")
+        self.assertEqual(payload["items"][2]["title"], "Second")
+        self.assertEqual(payload["items"][1]["subtitle"], "3 plays")
         self.assertEqual(payload["items"][2]["subtitle"], "Played yesterday • 1 play")
         self.assertNotIn("youtube.com", payload["items"][1]["subtitle"])
+        self.assertNotEqual(
+            payload["items"][1]["icon"]["path"],
+            payload["items"][2]["icon"]["path"],
+        )
 
     def test_filter_shows_pause_and_stop_controls_when_active(self) -> None:
         state = {
@@ -151,7 +155,7 @@ class FilterTests(unittest.TestCase):
             with patch.object(yt_audio_workflow, "process_alive", return_value=True):
                 with patch.object(yt_audio_workflow, "clipboard_text", return_value=""):
                     payload = yt_audio_workflow.filter_items("")
-        recent_item = next(item for item in payload["items"] if item["title"] == "Recent: Active Video")
+        recent_item = next(item for item in payload["items"] if item["title"] == "Active Video")
         self.assertEqual(recent_item["subtitle"], "Currently playing • 4 plays")
 
     def test_recent_items_fall_back_to_original_title_for_older_history(self) -> None:
@@ -167,8 +171,32 @@ class FilterTests(unittest.TestCase):
             (self.data_dir / "history.json").write_text(json.dumps(history))
             with patch.object(yt_audio_workflow, "clipboard_text", return_value=""):
                 payload = yt_audio_workflow.filter_items("")
-        recent_item = next(item for item in payload["items"] if item["title"] == "Recent: Legacy Title")
+        recent_item = next(item for item in payload["items"] if item["title"] == "Legacy Title")
         self.assertEqual(recent_item["subtitle"], "Played today")
+
+    def test_quick_picks_are_limited_to_top_three_and_removed_from_recents(self) -> None:
+        now = datetime.now()
+        history = [
+            {
+                "url": f"https://www.youtube.com/watch?v={index}",
+                "title": f"Video {index}",
+                "display_title": f"Video {index}",
+                "play_count": play_count,
+                "played_at": int((now - timedelta(minutes=index)).timestamp()),
+            }
+            for index, play_count in enumerate((7, 6, 5, 4, 1), start=1)
+        ]
+        with self.patch_data_dir(), self.patch_paths():
+            (self.data_dir / "history.json").write_text(json.dumps(history))
+            with patch.object(yt_audio_workflow, "clipboard_text", return_value="https://youtu.be/abc123"):
+                payload = yt_audio_workflow.filter_items("")
+
+        quick_pick_titles = [item["title"] for item in payload["items"][1:4]]
+        self.assertEqual(quick_pick_titles, ["Video 1", "Video 2", "Video 3"])
+        self.assertEqual(payload["items"][1]["subtitle"], "7 plays")
+        self.assertEqual(payload["items"][3]["subtitle"], "5 plays")
+        remaining_titles = [item["title"] for item in payload["items"][4:]]
+        self.assertEqual(remaining_titles, ["Video 4", "Video 5"])
 
     def test_filter_shows_invalid_clipboard_message(self) -> None:
         with self.patch_data_dir(), self.patch_paths():

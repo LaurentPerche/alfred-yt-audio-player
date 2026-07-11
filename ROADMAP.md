@@ -2,6 +2,12 @@
 
 ## Current
 
+### v0.11.0
+
+* Show up to three most-played videos first as quick picks when `yt` opens in Alfred
+* Use icon-only categorization for quick picks and recent items instead of text prefixes
+* Refresh playback and action icons with a more modern custom visual style
+
 ### v0.10.0
 
 * Simplify noisy recent-video titles automatically in Alfred history results

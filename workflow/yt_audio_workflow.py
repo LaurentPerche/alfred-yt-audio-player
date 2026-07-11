@@ -17,15 +17,20 @@ from urllib.parse import parse_qs, urlparse
 
 APP_NAME = "Alfred YT Audio Player"
 HISTORY_LIMIT = 5
+QUICK_PICK_LIMIT = 3
 DISPLAY_TITLE_LIMIT = 56
 YTDLP_BIN = which("yt-dlp") or "/usr/local/bin/yt-dlp"
 FFPLAY_BIN = which("ffplay") or "/usr/local/bin/ffplay"
 PYTHON_BIN = sys.executable
-CORE_TYPES = Path("/System/Library/CoreServices/CoreTypes.bundle/Contents/Resources")
-PLAY_ICON = {"path": str(CORE_TYPES / "GenericURLIcon.icns")}
-AUDIO_ICON = {"path": str(CORE_TYPES / "CDAudioVolumeIcon.icns")}
-STOP_ICON = {"path": str(CORE_TYPES / "MusicFolderIcon.icns")}
-RECENT_ICON = {"path": str(CORE_TYPES / "Clock.icns")}
+WORKFLOW_ROOT = Path(__file__).resolve().parent
+ICON_DIR = WORKFLOW_ROOT / "icons"
+PLAY_ICON = {"path": str(ICON_DIR / "play-url.png")}
+QUICK_PICK_ICON = {"path": str(ICON_DIR / "quick-pick.png")}
+RECENT_ICON = {"path": str(ICON_DIR / "recent.png")}
+PAUSE_ICON = {"path": str(ICON_DIR / "pause.png")}
+RESUME_ICON = {"path": str(ICON_DIR / "resume.png")}
+STOP_ICON = {"path": str(ICON_DIR / "stop.png")}
+WARNING_ICON = {"path": str(ICON_DIR / "warning.png")}
 
 
 def workflow_data_dir() -> Path:
@@ -349,27 +354,72 @@ def play_count_label(value: Any) -> str:
     return f"{value} plays"
 
 
-def recent_items() -> list[dict[str, Any]]:
+def quick_pick_entries() -> list[dict[str, Any]]:
+    picks = []
+    ranked = sorted(
+        load_history(),
+        key=lambda entry: (
+            -int(entry.get("play_count", 0)),
+            -int(entry.get("played_at", 0)),
+        ),
+    )
+    for entry in ranked:
+        if int(entry.get("play_count", 0)) < 2:
+            continue
+        picks.append(entry)
+        if len(picks) >= QUICK_PICK_LIMIT:
+            break
+    return picks
+
+
+def history_item(
+    entry: dict[str, Any],
+    *,
+    active_url: str | None,
+    active_paused: bool,
+    icon: dict[str, str],
+    uid_prefix: str,
+    prefer_play_count: bool,
+) -> dict[str, Any]:
+    title = entry.get("display_title") or entry.get("title") or entry["url"]
+    count_label = play_count_label(entry.get("play_count"))
+
+    if entry.get("url") == active_url:
+        status = "Currently paused" if active_paused else "Currently playing"
+        subtitle = status if not count_label else f"{status} • {count_label}"
+    elif prefer_play_count and count_label:
+        subtitle = count_label
+    else:
+        subtitle = played_label(entry.get("played_at"))
+        if count_label:
+            subtitle = f"{subtitle} • {count_label}"
+
+    return alfred_item(
+        title=title,
+        subtitle=subtitle,
+        arg=action_arg("play", entry["url"]),
+        uid=f"{uid_prefix}::{entry['url']}",
+        icon=icon,
+    )
+
+
+def recent_items(excluded_urls: set[str] | None = None) -> list[dict[str, Any]]:
     items = []
+    excluded_urls = excluded_urls or set()
     state = current_state()
     active_url = state.get("url")
     active_paused = bool(state.get("paused"))
     for entry in load_history()[:HISTORY_LIMIT]:
-        title = entry.get("display_title") or entry.get("title") or entry["url"]
-        subtitle = played_label(entry.get("played_at"))
-        count_label = play_count_label(entry.get("play_count"))
-        if count_label:
-            subtitle = f"{subtitle} • {count_label}"
-        if entry.get("url") == active_url:
-            status = "Currently paused" if active_paused else "Currently playing"
-            subtitle = status if not count_label else f"{status} • {count_label}"
+        if entry.get("url") in excluded_urls:
+            continue
         items.append(
-            alfred_item(
-                title=f"Recent: {title}",
-                subtitle=subtitle,
-                arg=action_arg("play", entry["url"]),
-                uid=f"recent::{entry['url']}",
+            history_item(
+                entry,
+                active_url=active_url,
+                active_paused=active_paused,
                 icon=RECENT_ICON,
+                uid_prefix="recent",
+                prefer_play_count=False,
             )
         )
     return items
@@ -388,7 +438,7 @@ def active_control_items() -> list[dict[str, Any]]:
             subtitle=title,
             arg=action_arg("resume" if paused else "pause"),
             uid="control::toggle-pause",
-            icon=AUDIO_ICON,
+            icon=RESUME_ICON if paused else PAUSE_ICON,
         ),
         alfred_item(
             title="Stop current audio",
@@ -411,13 +461,29 @@ def filter_items(query: str) -> dict[str, Any]:
                 title="Missing required dependency",
                 subtitle=f"Install or expose these binaries in PATH: {joined}",
                 valid=False,
-                icon=STOP_ICON,
+                icon=WARNING_ICON,
             )
         )
         return {"items": items}
 
     controls = active_control_items()
-    recent = recent_items()
+    state = current_state()
+    active_url = state.get("url")
+    active_paused = bool(state.get("paused"))
+    quick_pick_data = quick_pick_entries()
+    quick_pick_urls = {entry["url"] for entry in quick_pick_data}
+    quick_picks = [
+        history_item(
+            entry,
+            active_url=active_url,
+            active_paused=active_paused,
+            icon=QUICK_PICK_ICON,
+            uid_prefix="quick",
+            prefer_play_count=True,
+        )
+        for entry in quick_pick_data
+    ]
+    recent = recent_items(quick_pick_urls)
 
     trimmed = query.strip()
     if trimmed:
@@ -440,7 +506,7 @@ def filter_items(query: str) -> dict[str, Any]:
                     title="Enter a valid YouTube URL",
                     subtitle="Supported formats: youtube.com/watch, youtu.be, /shorts, /live",
                     valid=False,
-                    icon=STOP_ICON,
+                    icon=WARNING_ICON,
                 )
             )
     else:
@@ -463,9 +529,10 @@ def filter_items(query: str) -> dict[str, Any]:
                     title="Clipboard does not contain a YouTube URL",
                     subtitle="Copy a YouTube link or type one after yt",
                     valid=False,
-                    icon=STOP_ICON,
+                    icon=WARNING_ICON,
                 )
             )
+        items.extend(quick_picks)
 
     items.extend(recent)
     return {"items": items}
