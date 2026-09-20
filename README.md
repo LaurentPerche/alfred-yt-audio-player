@@ -2,7 +2,9 @@
 
 Play YouTube links as background audio directly from Alfred on macOS using `yt-dlp` and `ffplay`, without keeping YouTube open in Chrome or any other browser.
 
-Current release: `v0.11.0`
+Current public release: `v0.11.0`
+
+Current development build: `v0.12.0`
 
 This is an early public release. It works well in local testing, but it has not been fully tested across different macOS and Alfred setups yet. Feedback, bug reports, and edge cases are very welcome.
 
@@ -13,6 +15,7 @@ This is an early public release. It works well in local testing, but it has not 
 * Play audio in the background without leaving YouTube open in a web browser.
 * Stop the current audio automatically when a new item is played.
 * Pause, resume, or stop playback from Alfred while audio is active.
+* Choose a persistent Max, Medium, or Low audio level without changing the volume of other Mac apps.
 * Reopen one of the last five videos you played from recent history, with shorter labels and per-video play counts.
 * Surface up to three most-played videos first as quick picks when you open `yt`.
 * See Alfred notifications when playback starts, pauses, resumes, stops, or fails.
@@ -36,6 +39,15 @@ Active playback controls inside Alfred:
 ![Alfred showing pause and stop controls for the current audio session](docs/screenshots/alfred-playback-controls.png)
 
 ## Release Notes
+
+The unreleased `v0.12.0` development build adds workflow-specific audio levels:
+
+* type `yt volume` and choose Max (100%), Medium (55%), or Low (25%)
+* keep that choice as the default for future playback
+* leave macOS system volume and audio from other apps unchanged
+* use Max by default for backward-compatible playback
+
+The selected level takes effect when the next item starts. Changing the volume of an already-running `ffplay` session would require restarting playback or moving to a player with live control support.
 
 `v0.11.0` improves first-glance playback selection inside Alfred.
 
@@ -99,11 +111,13 @@ For the easiest install path after publishing, download the latest `.alfredworkf
 * `yt https://www.youtube.com/watch?v=...`
 * `yt https://youtu.be/...`
 * `yt`
+* `yt volume`
 
 When you type only `yt`, Alfred shows:
 
 * playback controls first when audio is already active
 * `Play clipboard URL` if the clipboard contains a valid YouTube URL
+* the current audio level, with Max, Medium, and Low available through `yt volume`
 * up to three most-played videos first as quick picks
 * the five most recent videos underneath
 * simplified recent-item names when the original YouTube title is noisy
@@ -117,6 +131,8 @@ The workflow stores runtime state in Alfred's workflow data directory:
   Tracks the active playback PID, URL, title, and start time
 * `history.json`
   Tracks the five most recent unique plays, simplified recent-item labels, and per-video play counts
+* `settings.json`
+  Stores the selected Max, Medium, or Low audio level
 
 The workflow bundle also includes custom icon assets used to distinguish quick picks, recent items, playback controls, and warning states visually inside Alfred.
 
@@ -124,6 +140,7 @@ The workflow bundle also includes custom icon assets used to distinguish quick p
 
 * v1 only supports YouTube URLs
 * pause and resume are process-level controls built on `ffplay`, so very occasional stream reconnection quirks may still need a fresh play action
+* audio-level changes apply to the next playback because `ffplay` does not expose reliable live volume control for this background process
 * error handling is surfaced through Alfred result rows and script failures rather than a custom UI
 
 ## Ideal GitHub Topics

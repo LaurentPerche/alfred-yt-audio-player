@@ -25,7 +25,7 @@
   <key>createdby</key>
   <string>OpenAI Codex</string>
   <key>description</key>
-  <string>Play YouTube URLs as audio through yt-dlp and ffplay, with clipboard fallback, quick picks, and five-item history.</string>
+  <string>Play YouTube URLs as audio through yt-dlp and ffplay, with volume presets, clipboard fallback, quick picks, and five-item history.</string>
   <key>disabled</key>
   <false/>
   <key>name</key>
@@ -67,7 +67,7 @@ python3 yt_audio_workflow.py filter "${1:-}"</string>
         <key>scriptfile</key>
         <string></string>
         <key>subtext</key>
-        <string>Play a YouTube URL or choose a quick pick or recent item.</string>
+        <string>Play a YouTube URL, choose an audio level, or open a recent item.</string>
         <key>title</key>
         <string>YT Audio Player</string>
         <key>type</key>
@@ -108,7 +108,7 @@ python3 yt_audio_workflow.py dispatch "${1:-}" &gt;&gt; "${alfred_workflow_data:
     </dict>
   </array>
   <key>readme</key>
-  <string>Type yt followed by a YouTube URL, or type yt alone to use the clipboard URL.</string>
+  <string>Type yt followed by a YouTube URL, type yt alone to use the clipboard URL, or type yt volume to choose Max, Medium, or Low.</string>
   <key>uidata</key>
   <dict>
     <key>3A3A5A61-7A2D-4A9B-8A6A-PLAYACTION</key>
@@ -127,7 +127,7 @@ python3 yt_audio_workflow.py dispatch "${1:-}" &gt;&gt; "${alfred_workflow_data:
     </dict>
   </dict>
   <key>version</key>
-  <string>0.11.0</string>
+  <string>0.12.0</string>
   <key>webaddress</key>
   <string></string>
 </dict>

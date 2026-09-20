@@ -4,7 +4,7 @@ import tempfile
 import unittest
 from datetime import datetime, timedelta
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 
 with patch.dict("os.environ", {"alfred_workflow_data": tempfile.mkdtemp()}):
@@ -54,6 +54,7 @@ class FilterTests(unittest.TestCase):
             yt_audio_workflow,
             STATE_PATH=self.data_dir / "state.json",
             HISTORY_PATH=self.data_dir / "history.json",
+            SETTINGS_PATH=self.data_dir / "settings.json",
             YTDLP_BIN="/bin/echo",
             FFPLAY_BIN="/bin/echo",
         )
@@ -90,14 +91,15 @@ class FilterTests(unittest.TestCase):
             with patch.object(yt_audio_workflow, "clipboard_text", return_value="https://youtu.be/abc123"):
                 payload = yt_audio_workflow.filter_items("")
         self.assertEqual(payload["items"][0]["title"], "Play clipboard URL")
-        self.assertEqual(payload["items"][1]["title"], "First")
-        self.assertEqual(payload["items"][2]["title"], "Second")
-        self.assertEqual(payload["items"][1]["subtitle"], "3 plays")
-        self.assertEqual(payload["items"][2]["subtitle"], "Played yesterday • 1 play")
-        self.assertNotIn("youtube.com", payload["items"][1]["subtitle"])
+        self.assertEqual(payload["items"][1]["title"], "Audio level: Max")
+        self.assertEqual(payload["items"][2]["title"], "First")
+        self.assertEqual(payload["items"][3]["title"], "Second")
+        self.assertEqual(payload["items"][2]["subtitle"], "3 plays")
+        self.assertEqual(payload["items"][3]["subtitle"], "Played yesterday • 1 play")
+        self.assertNotIn("youtube.com", payload["items"][2]["subtitle"])
         self.assertNotEqual(
-            payload["items"][1]["icon"]["path"],
             payload["items"][2]["icon"]["path"],
+            payload["items"][3]["icon"]["path"],
         )
 
     def test_filter_shows_pause_and_stop_controls_when_active(self) -> None:
@@ -191,11 +193,11 @@ class FilterTests(unittest.TestCase):
             with patch.object(yt_audio_workflow, "clipboard_text", return_value="https://youtu.be/abc123"):
                 payload = yt_audio_workflow.filter_items("")
 
-        quick_pick_titles = [item["title"] for item in payload["items"][1:4]]
+        quick_pick_titles = [item["title"] for item in payload["items"][2:5]]
         self.assertEqual(quick_pick_titles, ["Video 1", "Video 2", "Video 3"])
-        self.assertEqual(payload["items"][1]["subtitle"], "7 plays")
-        self.assertEqual(payload["items"][3]["subtitle"], "5 plays")
-        remaining_titles = [item["title"] for item in payload["items"][4:]]
+        self.assertEqual(payload["items"][2]["subtitle"], "7 plays")
+        self.assertEqual(payload["items"][4]["subtitle"], "5 plays")
+        remaining_titles = [item["title"] for item in payload["items"][5:]]
         self.assertEqual(remaining_titles, ["Video 4", "Video 5"])
 
     def test_filter_shows_invalid_clipboard_message(self) -> None:
@@ -204,6 +206,24 @@ class FilterTests(unittest.TestCase):
                 payload = yt_audio_workflow.filter_items("")
         self.assertEqual(payload["items"][0]["title"], "Clipboard does not contain a YouTube URL")
         self.assertFalse(payload["items"][0]["valid"])
+
+    def test_volume_query_shows_three_presets_and_current_level(self) -> None:
+        with self.patch_data_dir(), self.patch_paths():
+            (self.data_dir / "settings.json").write_text(json.dumps({"volume_level": "medium"}))
+            payload = yt_audio_workflow.filter_items("volume")
+
+        self.assertEqual([item["title"] for item in payload["items"]], ["Max", "Medium", "Low"])
+        self.assertEqual(payload["items"][1]["subtitle"], "55% • Current level")
+        self.assertEqual(
+            json.loads(payload["items"][2]["arg"]),
+            {"action": "set_volume", "value": "low"},
+        )
+
+    def test_volume_query_can_filter_to_one_preset(self) -> None:
+        with self.patch_data_dir(), self.patch_paths():
+            payload = yt_audio_workflow.filter_items("volume low")
+
+        self.assertEqual([item["title"] for item in payload["items"]], ["Low"])
 
 
 class HistoryTests(unittest.TestCase):
@@ -257,6 +277,46 @@ class HistoryTests(unittest.TestCase):
         self.assertEqual(history[0]["play_count"], 1)
 
 
+class VolumeTests(unittest.TestCase):
+    def setUp(self) -> None:
+        self.tempdir = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tempdir.cleanup)
+        self.data_dir = Path(self.tempdir.name)
+
+    def patch_paths(self):
+        return patch.multiple(
+            yt_audio_workflow,
+            STATE_PATH=self.data_dir / "state.json",
+            HISTORY_PATH=self.data_dir / "history.json",
+            SETTINGS_PATH=self.data_dir / "settings.json",
+        )
+
+    def test_default_level_preserves_full_volume(self) -> None:
+        with self.patch_paths():
+            self.assertEqual(yt_audio_workflow.load_volume_level(), "max")
+
+    def test_selected_level_is_saved(self) -> None:
+        with self.patch_paths():
+            yt_audio_workflow.set_volume_level("LOW")
+            self.assertEqual(yt_audio_workflow.load_volume_level(), "low")
+
+    def test_start_playback_passes_selected_volume_to_ffplay(self) -> None:
+        process = Mock(pid=4321)
+        with self.patch_paths():
+            yt_audio_workflow.set_volume_level("low")
+            with patch.object(yt_audio_workflow, "dependency_errors", return_value=[]), patch.object(
+                yt_audio_workflow, "stop_existing_playback"
+            ), patch.object(yt_audio_workflow, "notify"), patch.object(
+                yt_audio_workflow,
+                "resolve_audio",
+                return_value=("Test title", "https://stream.example/audio"),
+            ), patch.object(yt_audio_workflow.subprocess, "Popen", return_value=process) as popen:
+                yt_audio_workflow.start_playback("https://youtu.be/abc123")
+
+        command = popen.call_args.args[0]
+        self.assertEqual(command[command.index("-volume") + 1], "25")
+
+
 class DispatchTests(unittest.TestCase):
     def test_dispatch_routes_play(self) -> None:
         with patch.object(yt_audio_workflow, "command_play", return_value=0) as command_play:
@@ -279,6 +339,14 @@ class DispatchTests(unittest.TestCase):
                 result = yt_audio_workflow.command_dispatch([])
         self.assertEqual(result, 0)
         command_play.assert_called_once_with(["https://www.youtube.com/watch?v=abc123"])
+
+    def test_dispatch_routes_volume_selection(self) -> None:
+        with patch.object(yt_audio_workflow, "command_set_volume", return_value=0) as command_set_volume:
+            result = yt_audio_workflow.command_dispatch(
+                [json.dumps({"action": "set_volume", "value": "medium"})]
+            )
+        self.assertEqual(result, 0)
+        command_set_volume.assert_called_once_with(["medium"])
 
 
 if __name__ == "__main__":

@@ -31,6 +31,12 @@ PAUSE_ICON = {"path": str(ICON_DIR / "pause.png")}
 RESUME_ICON = {"path": str(ICON_DIR / "resume.png")}
 STOP_ICON = {"path": str(ICON_DIR / "stop.png")}
 WARNING_ICON = {"path": str(ICON_DIR / "warning.png")}
+DEFAULT_VOLUME_LEVEL = "max"
+VOLUME_PRESETS = {
+    "max": 100,
+    "medium": 55,
+    "low": 25,
+}
 
 
 def workflow_data_dir() -> Path:
@@ -49,6 +55,7 @@ def workflow_data_dir() -> Path:
 
 STATE_PATH = workflow_data_dir() / "state.json"
 HISTORY_PATH = workflow_data_dir() / "history.json"
+SETTINGS_PATH = workflow_data_dir() / "settings.json"
 
 
 def load_json(path: Path, default: Any) -> Any:
@@ -163,6 +170,7 @@ def alfred_item(
     uid: str | None = None,
     variables: dict[str, str] | None = None,
     icon: dict[str, str] | None = None,
+    autocomplete: str | None = None,
 ) -> dict[str, Any]:
     item: dict[str, Any] = {
         "title": title,
@@ -177,11 +185,82 @@ def alfred_item(
         item["variables"] = variables
     if icon:
         item["icon"] = icon
+    if autocomplete is not None:
+        item["autocomplete"] = autocomplete
     return item
 
 
 def action_arg(action: str, value: str = "") -> str:
     return json.dumps({"action": action, "value": value})
+
+
+def volume_label(level: str) -> str:
+    return level.capitalize()
+
+
+def load_volume_level() -> str:
+    settings = load_json(SETTINGS_PATH, {})
+    if not isinstance(settings, dict):
+        return DEFAULT_VOLUME_LEVEL
+    level = settings.get("volume_level")
+    if level not in VOLUME_PRESETS:
+        return DEFAULT_VOLUME_LEVEL
+    return level
+
+
+def set_volume_level(level: str) -> str:
+    normalized = level.strip().lower()
+    if normalized not in VOLUME_PRESETS:
+        choices = ", ".join(VOLUME_PRESETS)
+        raise ValueError(f"Unknown audio level: {level}. Choose {choices}.")
+
+    settings = load_json(SETTINGS_PATH, {})
+    if not isinstance(settings, dict):
+        settings = {}
+    settings["volume_level"] = normalized
+    save_json(SETTINGS_PATH, settings)
+    return normalized
+
+
+def volume_status_item() -> dict[str, Any]:
+    level = load_volume_level()
+    return alfred_item(
+        title=f"Audio level: {volume_label(level)}",
+        subtitle="Choose Max, Medium, or Low",
+        valid=False,
+        uid="volume::status",
+        autocomplete="volume",
+    )
+
+
+def volume_choice_items(query: str = "") -> list[dict[str, Any]]:
+    current = load_volume_level()
+    needle = query.strip().lower()
+    items = []
+    for level, percent in VOLUME_PRESETS.items():
+        label = volume_label(level)
+        if needle and needle not in level:
+            continue
+        status = "Current level" if level == current else f"Set playback audio to {percent}%"
+        items.append(
+            alfred_item(
+                title=label,
+                subtitle=f"{percent}% • {status}",
+                arg=action_arg("set_volume", level),
+                uid=f"volume::{level}",
+            )
+        )
+    return items
+
+
+def volume_query_value(query: str) -> str | None:
+    trimmed = query.strip().lower()
+    for prefix in ("volume", "vol"):
+        if trimmed == prefix:
+            return ""
+        if trimmed.startswith(f"{prefix} "):
+            return trimmed[len(prefix) + 1 :].strip()
+    return None
 
 
 def load_history() -> list[dict[str, Any]]:
@@ -466,6 +545,23 @@ def filter_items(query: str) -> dict[str, Any]:
         )
         return {"items": items}
 
+    volume_query = volume_query_value(query)
+    if volume_query is not None:
+        choices = volume_choice_items(volume_query)
+        if choices:
+            return {"items": choices}
+        return {
+            "items": [
+                alfred_item(
+                    title="Choose Max, Medium, or Low",
+                    subtitle="Type yt volume to see every audio level",
+                    valid=False,
+                    autocomplete="volume",
+                    icon=WARNING_ICON,
+                )
+            ]
+        }
+
     controls = active_control_items()
     state = current_state()
     active_url = state.get("url")
@@ -532,6 +628,7 @@ def filter_items(query: str) -> dict[str, Any]:
                     icon=WARNING_ICON,
                 )
             )
+        items.append(volume_status_item())
         items.extend(quick_picks)
 
     items.extend(recent)
@@ -575,6 +672,8 @@ def start_playback(url: str) -> int:
     stop_existing_playback()
     notify("YT Audio Player", "Resolving YouTube audio stream…")
     title, stream_url = resolve_audio(normalized)
+    volume_level = load_volume_level()
+    volume_percent = VOLUME_PRESETS[volume_level]
 
     process = subprocess.Popen(
         [
@@ -583,6 +682,8 @@ def start_playback(url: str) -> int:
             "-autoexit",
             "-loglevel",
             "error",
+            "-volume",
+            str(volume_percent),
             stream_url,
         ],
         stdout=subprocess.DEVNULL,
@@ -597,10 +698,12 @@ def start_playback(url: str) -> int:
             "title": title,
             "started_at": int(time.time()),
             "paused": False,
+            "volume_level": volume_level,
+            "volume_percent": volume_percent,
         },
     )
     update_history(normalized, title)
-    notify("Now playing", title)
+    notify("Now playing", f"{title} • {volume_label(volume_level)} volume")
     return process.pid
 
 
@@ -663,6 +766,26 @@ def command_stop(_: list[str]) -> int:
     return 0
 
 
+def command_set_volume(args: list[str]) -> int:
+    if not args:
+        message = "Choose an audio level: max, medium, or low"
+        notify("Audio level unchanged", message)
+        print(message, file=sys.stderr)
+        return 1
+    try:
+        level = set_volume_level(args[0])
+    except ValueError as exc:
+        message = str(exc)
+        notify("Audio level unchanged", message)
+        print(message, file=sys.stderr)
+        return 1
+
+    label = volume_label(level)
+    notify("Audio level updated", f"{label} will be used for the next playback")
+    print(f"Set audio level to {label}")
+    return 0
+
+
 def command_dispatch(args: list[str]) -> int:
     raw_payload = first_payload(args)
     if not raw_payload:
@@ -689,6 +812,8 @@ def command_dispatch(args: list[str]) -> int:
         return command_resume([])
     if action == "stop":
         return command_stop([])
+    if action == "set_volume":
+        return command_set_volume([value])
 
     message = f"Unknown workflow action: {action}"
     notify("Playback failed", message)
@@ -713,6 +838,8 @@ def main(argv: list[str]) -> int:
         return command_resume(args)
     if command == "stop":
         return command_stop(args)
+    if command == "set-volume":
+        return command_set_volume(args)
     if command == "dispatch":
         return command_dispatch(args)
 

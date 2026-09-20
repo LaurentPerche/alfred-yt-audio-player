@@ -2,6 +2,13 @@
 
 ## Current
 
+### v0.12.0 (development)
+
+* Add persistent Max (100%), Medium (55%), and Low (25%) workflow-specific audio levels
+* Expose the preset chooser through `yt volume` and show the current level in the default Alfred results
+* Keep macOS system volume and audio from other apps unchanged
+* Apply a changed preset to the next playback; evaluate `mpv` separately if live mid-stream adjustment becomes a priority
+
 ### v0.11.0
 
 * Show up to three most-played videos first as quick picks when `yt` opens in Alfred
