@@ -364,7 +364,7 @@ def pause_playback() -> dict[str, Any]:
     except PermissionError:
         os.kill(pid, signal.SIGSTOP)
 
-    return update_state(paused=True)
+    return update_state(paused=True, paused_at=int(time.time()))
 
 
 def resume_playback() -> dict[str, Any]:
@@ -383,7 +383,31 @@ def resume_playback() -> dict[str, Any]:
     except PermissionError:
         os.kill(pid, signal.SIGCONT)
 
-    return update_state(paused=False)
+    now = int(time.time())
+    paused_at = state.get("paused_at")
+    paused_seconds = int(state.get("accumulated_pause_seconds", 0))
+    if isinstance(paused_at, int):
+        paused_seconds += max(0, now - paused_at)
+    return update_state(
+        paused=False,
+        paused_at=None,
+        accumulated_pause_seconds=paused_seconds,
+    )
+
+
+def playback_position_seconds(state: dict[str, Any], now: int | None = None) -> int:
+    started_at = state.get("started_at")
+    if not isinstance(started_at, int):
+        return 0
+
+    current_time = int(time.time()) if now is None else now
+    if state.get("paused") and isinstance(state.get("paused_at"), int):
+        current_time = state["paused_at"]
+
+    offset = int(state.get("position_offset_seconds", 0))
+    paused_seconds = int(state.get("accumulated_pause_seconds", 0))
+    active_seconds = max(0, current_time - started_at - paused_seconds)
+    return max(0, offset + active_seconds)
 
 
 def update_history(url: str, title: str) -> None:
@@ -663,47 +687,67 @@ def notify(title: str, message: str) -> None:
     subprocess.run(["osascript", "-e", script], check=False)
 
 
-def start_playback(url: str) -> int:
+def start_playback(
+    url: str,
+    *,
+    start_at_seconds: int = 0,
+    update_play_history: bool = True,
+    announce: bool = True,
+    paused: bool = False,
+) -> int:
     normalized = normalized_youtube_url(url)
     missing = dependency_errors()
     if missing:
         raise RuntimeError(f"Missing required dependencies: {', '.join(missing)}")
 
     stop_existing_playback()
-    notify("YT Audio Player", "Resolving YouTube audio stream…")
+    if announce:
+        notify("YT Audio Player", "Resolving YouTube audio stream…")
     title, stream_url = resolve_audio(normalized)
     volume_level = load_volume_level()
     volume_percent = VOLUME_PRESETS[volume_level]
 
+    command = [
+        FFPLAY_BIN,
+        "-nodisp",
+        "-autoexit",
+        "-loglevel",
+        "error",
+        "-volume",
+        str(volume_percent),
+    ]
+    if start_at_seconds > 0:
+        command.extend(["-ss", str(start_at_seconds)])
+    command.append(stream_url)
+
     process = subprocess.Popen(
-        [
-            FFPLAY_BIN,
-            "-nodisp",
-            "-autoexit",
-            "-loglevel",
-            "error",
-            "-volume",
-            str(volume_percent),
-            stream_url,
-        ],
+        command,
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
         preexec_fn=os.setsid,
     )
+    now = int(time.time())
+    if paused:
+        os.killpg(process.pid, signal.SIGSTOP)
     save_json(
         STATE_PATH,
         {
             "pid": process.pid,
             "url": normalized,
             "title": title,
-            "started_at": int(time.time()),
-            "paused": False,
+            "started_at": now,
+            "paused": paused,
+            "paused_at": now if paused else None,
+            "accumulated_pause_seconds": 0,
+            "position_offset_seconds": start_at_seconds,
             "volume_level": volume_level,
             "volume_percent": volume_percent,
         },
     )
-    update_history(normalized, title)
-    notify("Now playing", f"{title} • {volume_label(volume_level)} volume")
+    if update_play_history:
+        update_history(normalized, title)
+    if announce:
+        notify("Now playing", f"{title} ({volume_label(volume_level)} volume)")
     return process.pid
 
 
@@ -772,6 +816,7 @@ def command_set_volume(args: list[str]) -> int:
         notify("Audio level unchanged", message)
         print(message, file=sys.stderr)
         return 1
+    active_state = current_state()
     try:
         level = set_volume_level(args[0])
     except ValueError as exc:
@@ -781,7 +826,24 @@ def command_set_volume(args: list[str]) -> int:
         return 1
 
     label = volume_label(level)
-    notify("Audio level updated", f"{label} will be used for the next playback")
+    if active_state:
+        position = playback_position_seconds(active_state)
+        try:
+            start_playback(
+                active_state["url"],
+                start_at_seconds=position,
+                update_play_history=False,
+                announce=False,
+                paused=bool(active_state.get("paused")),
+            )
+        except (OSError, RuntimeError, ValueError) as exc:
+            message = f"{label} was saved, but current playback could not be updated: {exc}"
+            notify("Audio level partially updated", message)
+            print(message, file=sys.stderr)
+            return 1
+        notify("Audio level updated", f"{label} applied to current playback")
+    else:
+        notify("Audio level updated", f"{label} will be used for the next playback")
     print(f"Set audio level to {label}")
     return 0
 

@@ -4,7 +4,7 @@ Play YouTube links as background audio directly from Alfred on macOS using `yt-d
 
 Current public release: `v0.11.0`
 
-Current development build: `v0.12.0`
+Current development build: `v0.12.1`
 
 This is an early public release. It works well in local testing, but it has not been fully tested across different macOS and Alfred setups yet. Feedback, bug reports, and edge cases are very welcome.
 
@@ -40,14 +40,14 @@ Active playback controls inside Alfred:
 
 ## Release Notes
 
-The unreleased `v0.12.0` development build adds workflow-specific audio levels:
+The unreleased `v0.12.1` development build adds workflow-specific audio levels:
 
 * type `yt volume` and choose Max (100%), Medium (55%), or Low (25%)
-* keep that choice as the default for future playback
+* apply a changed level to current playback with a brief reconnect, then keep it as the default
 * leave macOS system volume and audio from other apps unchanged
 * use Max by default for backward-compatible playback
 
-The selected level takes effect when the next item starts. Changing the volume of an already-running `ffplay` session would require restarting playback or moving to a player with live control support.
+When audio is already playing, selecting a new level restarts the background stream at approximately the same position so the change is immediately audible. This can cause a brief reconnect because `ffplay` does not expose reliable live volume control for this background process.
 
 `v0.11.0` improves first-glance playback selection inside Alfred.
 
@@ -140,7 +140,7 @@ The workflow bundle also includes custom icon assets used to distinguish quick p
 
 * v1 only supports YouTube URLs
 * pause and resume are process-level controls built on `ffplay`, so very occasional stream reconnection quirks may still need a fresh play action
-* audio-level changes apply to the next playback because `ffplay` does not expose reliable live volume control for this background process
+* changing the audio level during playback briefly reconnects the stream near the current position because `ffplay` does not expose reliable live volume control for this background process
 * error handling is surfaced through Alfred result rows and script failures rather than a custom UI
 
 ## Ideal GitHub Topics

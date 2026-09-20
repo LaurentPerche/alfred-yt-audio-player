@@ -316,6 +316,37 @@ class VolumeTests(unittest.TestCase):
         command = popen.call_args.args[0]
         self.assertEqual(command[command.index("-volume") + 1], "25")
 
+    def test_start_playback_can_resume_near_previous_position(self) -> None:
+        process = Mock(pid=4321)
+        with self.patch_paths(), patch.object(
+            yt_audio_workflow, "dependency_errors", return_value=[]
+        ), patch.object(yt_audio_workflow, "stop_existing_playback"), patch.object(
+            yt_audio_workflow, "notify"
+        ), patch.object(
+            yt_audio_workflow,
+            "resolve_audio",
+            return_value=("Test title", "https://stream.example/audio"),
+        ), patch.object(yt_audio_workflow.subprocess, "Popen", return_value=process) as popen:
+            yt_audio_workflow.start_playback(
+                "https://youtu.be/abc123",
+                start_at_seconds=42,
+                update_play_history=False,
+                announce=False,
+            )
+
+        command = popen.call_args.args[0]
+        self.assertEqual(command[command.index("-ss") + 1], "42")
+
+    def test_playback_position_excludes_time_spent_paused(self) -> None:
+        state = {
+            "started_at": 100,
+            "position_offset_seconds": 30,
+            "accumulated_pause_seconds": 10,
+            "paused": True,
+            "paused_at": 150,
+        }
+        self.assertEqual(yt_audio_workflow.playback_position_seconds(state, now=200), 70)
+
 
 class DispatchTests(unittest.TestCase):
     def test_dispatch_routes_play(self) -> None:
@@ -347,6 +378,31 @@ class DispatchTests(unittest.TestCase):
             )
         self.assertEqual(result, 0)
         command_set_volume.assert_called_once_with(["medium"])
+
+    def test_volume_selection_restarts_active_playback_at_current_position(self) -> None:
+        state = {
+            "pid": 1234,
+            "url": "https://www.youtube.com/watch?v=abc123",
+            "title": "Active video",
+            "started_at": 80,
+            "paused": False,
+        }
+        with patch.object(yt_audio_workflow, "current_state", return_value=state), patch.object(
+            yt_audio_workflow, "set_volume_level", return_value="low"
+        ) as set_volume, patch.object(yt_audio_workflow.time, "time", return_value=100), patch.object(
+            yt_audio_workflow, "start_playback", return_value=4321
+        ) as start_playback, patch.object(yt_audio_workflow, "notify"):
+            result = yt_audio_workflow.command_set_volume(["low"])
+
+        self.assertEqual(result, 0)
+        set_volume.assert_called_once_with("low")
+        start_playback.assert_called_once_with(
+            state["url"],
+            start_at_seconds=20,
+            update_play_history=False,
+            announce=False,
+            paused=False,
+        )
 
 
 if __name__ == "__main__":
